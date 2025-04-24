@@ -1,0 +1,28 @@
+# Ignore Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Ignore directories
+vendor/
+
+# Ignore environment files
+.env
+
+# Ignore database files
+database/data/
+database/innodb_redo/
+database/innodb_temp/
+
+# Ignore node_modules for frontend
+frontend-2/node_modules/
+
+# Ignore lock files
+frontend-2/bun.lockb
+
+# Ignore public assets
+frontend-2/public/*.svg

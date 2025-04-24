@@ -4,10 +4,9 @@ import (
 	// "fmt"
 	"log"
 	"math/rand"
-	"net/http"
-	"os"
 	"time"
-
+	
+	"os"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
@@ -21,6 +20,8 @@ type ShortlyLink struct {
 	OriginalURL string `gorm:"unique"`
 	ShortURL string `gorm:"unique"`
 }
+
+var db *gorm.DB
 
 func main() {
 	err := godotenv.Load(".env")	
@@ -37,9 +38,9 @@ func main() {
 
 	dsn := dbUsername+":"+dbpassword+"@tcp("+dbHost+":"+dbPort+")/"+dbName+"?parseTime=True"
 	
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("database : ", err)
 	}
 
 	// Migrate the schema
@@ -48,55 +49,12 @@ func main() {
 
 	router := gin.Default()
 	router.Use(cors.Default())
-	router.POST("/shorten", func(c *gin.Context) {
 
-		var data struct {
-			URL string `json:"url" binding:"required"`
-		}
+	router.GET("/:shortURL", GetOriginalLink)
+	router.POST("/shorten", ShortenLink)
 
-		if err := c.ShouldBindJSON(&data); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return 
-		}
-
-		var link ShortlyLink
-		// Check if the URL already exists in the database
-		result := db.Where("orginal_url = ?", data.URL).First(&link)
-		// If the URL already exists, return the existing short URL
-		if result.Error == nil {
-			if result.Error == gorm.ErrRecordNotFound {
-				shortURL := generateShortURL(data.URL)
-				link = ShortlyLink{OriginalURL: data.URL, ShortURL: shortURL}
-				result = db.Create(&link)
-				if result.Error != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error" : result.Error.Error()})
-					return
-				}
-			}
-		}
-
-		c.JSON(http.StatusOK, gin.H{"short_url": link.ShortURL})
-	})
-
-	router.GET("/:shortURL", func(c *gin.Context) {
-		shortURL := c.Param("shortURL")
-		var link ShortlyLink
-
-		result := db.Where("short_url = ?", shortURL).Find(&link)
-
-		if result.Error != nil {
-			if result.Error == gorm.ErrRecordNotFound {
-				c.JSON(http.StatusNotFound, gin.H{"error": "URL not found"})
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
-			}
-			return
-		}
-		//redirect to the original URL
-		c.Redirect(http.StatusMovedPermanently, link.OriginalURL)
-	})
-		
 	router.Run(":8000")
+
 }
 
 
